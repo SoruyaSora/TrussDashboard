@@ -8,7 +8,7 @@ import os
 # ==========================================
 # 0. ตั้งค่าฟอนต์ภาษาไทยให้ Matplotlib
 # ==========================================
-plt.rcParams['font.sans-serif'] = ['Tahoma', 'FreesiaUPC', 'Cordia New', 'DejaVu Sans']
+plt.rcParams['font.sans-serif'] = ['Tahoma', 'Loma', 'Garuda', 'FreesiaUPC', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False 
 
 # ==========================================
