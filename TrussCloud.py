@@ -325,8 +325,8 @@ elif st.session_state.current_page == "แดชบอร์ด":
                 ax.set_aspect('equal')
                 ax.axis('off')
 
-                ax.text(x_min, y_min - 0.3, "■ แรงดึง (Tension)", color="#EF4444", fontsize=10, fontweight='bold')
-                ax.text(x_min + 1.1, y_min - 0.3, "■ แรงอัด (Compression)", color="#3B82F6", fontsize=10, fontweight='bold')
+                ax.text(x_min, y_min - 0.3, "(+) แรงดึง (Tension)", color="#EF4444", fontsize=10, fontweight='bold')
+                ax.text(x_min + 1.1, y_min - 0.3, "(-) แรงอัด (Compression)", color="#3B82F6", fontsize=10, fontweight='bold')
 
                 plot_spot.pyplot(fig, use_container_width=True)
                 plt.close(fig)
