@@ -19,10 +19,10 @@ THEORY_COEFFS = {
 }
 
 # ==========================================
-# 🎨 ฟังก์ชันวาดรูปโครงถัก (ใช้ได้ทั้ง Dashboard และ ทฤษฎี)
+# 🎨 ฟังก์ชันวาดรูปโครงถัก (ปรับให้รองรับการเปลี่ยนตัวอักษรหน่วยวัด)
 # ==========================================
-def draw_truss(format_type, values):
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+def draw_truss(format_type, values, unit_label="kg"):
+    fig, ax = plt.subplots(figsize=(10, 5))
     ax.axis('off')
     ax.set_aspect('equal') # ให้สัดส่วนสมจริง
     
@@ -43,15 +43,13 @@ def draw_truss(format_type, values):
     # วาดเส้นโครงถัก (Sensors 1-6)
     for i, (n1, n2) in lines.items():
         val = values[i-1]
-        # สี: แดง=ดึง(+), น้ำเงิน=อัด(-), เทา=ศูนย์(0)
         color = '#ff3333' if val > 0.05 else '#3366ff' if val < -0.05 else '#999999'
         x = [nodes[n1][0], nodes[n2][0]]
         y = [nodes[n1][1], nodes[n2][1]]
         ax.plot(x, y, color=color, linewidth=5, zorder=1)
         
-        # กล่องข้อความแสดงค่าน้ำหนัก
         mid_x, mid_y = sum(x)/2, sum(y)/2
-        ax.text(mid_x, mid_y, f"{val:.2f} kg", ha='center', va='center', 
+        ax.text(mid_x, mid_y, f"{val:.2f} {unit_label}", ha='center', va='center', 
                 bbox=dict(facecolor='white', edgecolor=color, boxstyle='round,pad=0.3'),
                 fontsize=10, zorder=3)
     
@@ -59,14 +57,13 @@ def draw_truss(format_type, values):
     val7 = values[6]
     lx, ly = nodes[load_node]
     ax.arrow(lx, ly, 0, -0.35, head_width=0.08, head_length=0.1, fc='#ff3333', ec='#ff3333', linewidth=3, zorder=2)
-    ax.text(lx, ly - 0.25, f"{val7:.2f} kg", ha='center', va='center',
+    ax.text(lx, ly - 0.25, f"{val7:.2f} {unit_label}", ha='center', va='center',
             bbox=dict(facecolor='white', edgecolor='#ff3333', boxstyle='round,pad=0.3'), zorder=3)
     
     # วาดจุดเชื่อมต่อ (Nodes)
     for n, (x, y) in nodes.items():
         ax.plot(x, y, 'o', color='white', markeredgecolor='#444444', markersize=10, markeredgewidth=2, zorder=4)
         
-    # ใส่ Legend (ใช้ภาษาอังกฤษแก้บัค Tofu สี่เหลี่ยมบน Cloud)
     ax.text(0, -0.7, "■ Tension (+)", color='#ff3333', fontsize=12, fontweight='bold')
     ax.text(1, -0.7, "■ Compression (-)", color='#3366ff', fontsize=12, fontweight='bold')
     
@@ -105,15 +102,27 @@ if menu == "🏠 หน้าหลัก (Home)":
 elif menu == "📡 แดชบอร์ด (Real-time)":
     st.title(f"📡 แดชบอร์ดอ่านค่าจริง - รูปแบบ {selected_format}")
     
-    # ปรับโหมดจำลอง
-    simulate = st.checkbox("🧪 โหมดจำลอง (ไม่ใช้เน็ต)", value=False)
+    col_sim, col_unit = st.columns(2)
+    with col_sim:
+        simulate = st.checkbox("🧪 โหมดจำลอง (ไม่ใช้เน็ต)", value=False)
+    with col_unit:
+        unit = st.radio("📏 เลือกหน่วยวัด:", ["kg", "N (นิวตัน)", "lbs (ปอนด์)"], horizontal=True)
+        
+    # คำนวณตัวคูณตามหน่วย
+    multiplier = 1.0
+    unit_label = "kg"
+    if unit == "N (นิวตัน)":
+        multiplier = 9.81
+        unit_label = "N"
+    elif unit == "lbs (ปอนด์)":
+        multiplier = 2.2046
+        unit_label = "lbs"
     
     placeholder = st.empty()
     FIREBASE_URL = "https://trussproject-3fc34-default-rtdb.asia-southeast1.firebasedatabase.app/truss/data.json"
     
     while True:
         if simulate:
-            # ข้อมูลจำลอง
             vals = [1.0, -1.0, 1.5, -2.0, 1.5, -1.0, 1.0]
         else:
             try:
@@ -122,17 +131,21 @@ elif menu == "📡 แดชบอร์ด (Real-time)":
                 vals = [data['kg1'], data['kg2'], data['kg3'], data['kg4'], data['kg5'], data['kg6'], data['kg7']]
             except:
                 vals = [0]*7
+                
+        # นำค่าดิบมาคูณหน่วย
+        display_vals = [v * multiplier for v in vals]
         
         with placeholder.container():
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                fig = draw_truss(selected_format, vals)
-                st.pyplot(fig)
+            fig = draw_truss(selected_format, display_vals, unit_label)
+            st.pyplot(fig)
             
-            with col2:
-                st.subheader("📊 ข้อมูลเซนเซอร์ (kg)")
-                for i in range(7):
-                    st.metric(label=f"Sensor {i+1}", value=f"{vals[i]:.2f}")
+            st.markdown("---")
+            st.subheader(f"📊 ข้อมูลเซนเซอร์ ({unit_label})")
+            
+            # โชว์ข้อมูลเป็นแนวนอน
+            cols = st.columns(7)
+            for i in range(7):
+                cols[i].metric(label=f"Sen {i+1}", value=f"{display_vals[i]:.2f}")
                 
         time.sleep(1) # อัปเดตทุก 1 วินาที
 
@@ -143,26 +156,36 @@ elif menu == "📚 ทฤษฎี (Theory)":
     st.title(f"📚 จำลองการคำนวณตามทฤษฎี - รูปแบบ {selected_format}")
     st.markdown("จำลองการรับแรงของชิ้นส่วนต่างๆ ตามหลักการวิเคราะห์โครงสร้าง (Method of Joints)")
     
-    # Slider เลื่อนน้ำหนัก
-    weight = st.slider("⚖️ เลือกระดับน้ำหนักโหลด (kg)", min_value=0.5, max_value=10.0, value=1.0, step=0.1)
+    col_weight, col_unit = st.columns(2)
+    with col_weight:
+        weight = st.slider("⚖️ เลือกระดับน้ำหนักโหลด (kg)", min_value=0.5, max_value=10.0, value=1.0, step=0.1)
+    with col_unit:
+        unit = st.radio("📏 เลือกหน่วยวัดที่ต้องการแสดง:", ["kg", "N (นิวตัน)", "lbs (ปอนด์)"], horizontal=True)
+        
+    multiplier = 1.0
+    unit_label = "kg"
+    if unit == "N (นิวตัน)":
+        multiplier = 9.81
+        unit_label = "N"
+    elif unit == "lbs (ปอนด์)":
+        multiplier = 2.2046
+        unit_label = "lbs"
     
-    # คำนวณค่าทฤษฎี (เอาสัมประสิทธิ์ * น้ำหนักโหลด)
+    # คำนวณค่าทฤษฎี (สัมประสิทธิ์ * น้ำหนัก * หน่วยวัด)
     coeffs = THEORY_COEFFS[selected_format]
-    theory_vals = [c * weight for c in coeffs]
+    theory_vals = [c * weight * multiplier for c in coeffs]
     
     col1, col2 = st.columns([2, 1])
-    
     with col1:
-        # วาดกราฟทฤษฎี
-        fig = draw_truss(selected_format, theory_vals)
+        fig = draw_truss(selected_format, theory_vals, unit_label)
         st.pyplot(fig)
         
     with col2:
-        st.subheader("📝 ตารางแรงตามทฤษฎี")
+        st.subheader(f"📝 ตารางแรงตามทฤษฎี ({unit_label})")
         df = pd.DataFrame({
             "ชิ้นส่วน (Sensor)": [f"Sensor {i+1}" for i in range(7)],
             "ค่าสัมประสิทธิ์": coeffs,
-            f"แรงที่เกิดขึ้น (kg)": [round(v, 2) for v in theory_vals]
+            f"แรงที่เกิดขึ้น ({unit_label})": [round(v, 2) for v in theory_vals]
         })
         st.dataframe(df, hide_index=True, use_container_width=True)
         st.info("💡 **Tips:** แรงดึง (Tension) จะมีค่าเป็นบวก และแรงอัด (Compression) จะมีค่าเป็นลบ")
