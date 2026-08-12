@@ -368,7 +368,7 @@ elif st.session_state.current_page == "ทฤษฎี":
     # --- แผงควบคุมเลื่อนน้ำหนัก ---
     ctrl_col1, ctrl_col2 = st.columns([2, 1])
     with ctrl_col1:
-        weight_input = st.slider("⚖️ เลือกระดับน้ำหนักโหลด (kg)", min_value=0.5, max_value=10.0, value=1.0, step=0.1)
+        weight_input = st.slider("⚖️ เลือกระดับน้ำหนักโหลด (kg)", min_value=1.0, max_value=5.0, value=1.0, step=1.0)
     with ctrl_col2:
         unit_theo = st.radio("เลือกหน่วยวัดทฤษฎี:", ["kg", "N"], horizontal=True, key="unit_theo")
         
@@ -446,7 +446,7 @@ elif st.session_state.current_page == "ทฤษฎี":
         ax.scatter(nodes[:-1, 0], nodes[:-1, 1], s=120, c="#3B82F6", edgecolors="#FFFFFF", linewidths=2, zorder=3)
         ax.set_aspect('equal')
         ax.axis('off')
-        ax.text(x_min, y_min - 0.3, "■ แรงดึง (Tension)", color="#EF4444", fontsize=10, fontweight='bold')
-        ax.text(x_min + 1.1, y_min - 0.3, "■ แรงอัด (Compression)", color="#3B82F6", fontsize=10, fontweight='bold')
+        ax.text(x_min, y_min - 0.3, "(+) แรงดึง (Tension)", color="#EF4444", fontsize=10, fontweight='bold')
+        ax.text(x_min + 1.1, y_min - 0.3, "(-) แรงอัด (Compression)", color="#3B82F6", fontsize=10, fontweight='bold')
 
         st.pyplot(fig, use_container_width=True)
