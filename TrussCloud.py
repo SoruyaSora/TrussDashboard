@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import os
+import pandas as pd  # <-- เพิ่มแพ็กเกจสำหรับตารางทฤษฎี
 
 # ==========================================
 # 0. ตั้งค่าฟอนต์ภาษาไทยให้ Matplotlib
@@ -21,7 +22,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# 🚀 [แก้ไขที่นี่ 1] เปลี่ยนจาก IP เดิม เป็นลิงก์ Firebase ของคุณ
 DATA_URL = "https://trussproject-3fc34-default-rtdb.asia-southeast1.firebasedatabase.app/truss/data.json"
 
 for i in range(1, 8):
@@ -106,6 +106,12 @@ with st.sidebar:
         
     if st.button("📊 แดชบอร์ด (Dashboard)", use_container_width=True, key="nav_dash"):
         st.session_state.current_page = "แดชบอร์ด"
+        st.session_state.needs_flush = True
+        st.rerun()
+
+    # 🚀 เพิ่มปุ่มทฤษฎีตรงนี้
+    if st.button("📚 ทฤษฎี (Theory)", use_container_width=True, key="nav_theo"):
+        st.session_state.current_page = "ทฤษฎี"
         st.session_state.needs_flush = True
         st.rerun()
 
@@ -206,10 +212,9 @@ elif st.session_state.current_page == "แดชบอร์ด":
                     if demo_mode:
                         d = get_simulated_data()
                     else:
-                        resp = requests.get(DATA_URL, timeout=3.0) # 🚀 เพิ่มเวลา Timeout ให้ดึงจากเน็ตได้ชัวร์ขึ้น
+                        resp = requests.get(DATA_URL, timeout=3.0) 
                         d = resp.json() if resp.status_code == 200 else {}
                         
-                        # 🚀 [แก้ไขที่นี่ 2] ดักจับบั๊กกรณีดึงสำเร็จ แต่ Firebase โล่ง (Return เป็น None)
                         if d is None:
                             d = {}
                             
@@ -242,56 +247,16 @@ elif st.session_state.current_page == "แดชบอร์ด":
         </div>
         """, unsafe_allow_html=True)
 
-    # ==========================================
-    # ✅ แยกโหนดและพิกัดของแต่ละรูปแบบให้เป็นอิสระต่อกัน
-    # ==========================================
     if st.session_state.selected_truss == "รูปแบบ A":
-        nodes = np.array([
-            [0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, -0.8]
-        ])
-        members = np.array([
-            [0, 3], # Sen 1
-            [2, 3], # Sen 2
-            [0, 2], # Sen 3 (ทแยงจาก บนซ้าย ลง ล่างกลาง)
-            [1, 2], # Sen 4
-            [3, 4], # Sen 5
-            [2, 4], # Sen 6
-            [4, 5]  # Sen 7
-        ])
+        nodes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, -0.8]])
+        members = np.array([[0, 3], [2, 3], [0, 2], [1, 2], [3, 4], [2, 4], [4, 5]])
     elif st.session_state.selected_truss == "รูปแบบ B": 
-        nodes = np.array([
-            [0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, -0.8]
-        ])
-        members = np.array([
-            [0, 3], # Sen 1
-            [2, 3], # Sen 2
-            [1, 3], # Sen 3 (ทแยงจาก ล่างซ้าย ขึ้น บนกลาง)
-            [1, 2], # Sen 4
-            [3, 4], # Sen 5
-            [2, 4], # Sen 6
-            [4, 5]  # Sen 7
-        ])
+        nodes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, -0.8]])
+        members = np.array([[0, 3], [2, 3], [1, 3], [1, 2], [3, 4], [2, 4], [4, 5]])
     else: 
-        # ✅ รูปแบบ C (อิงตามรูปภาพ 406cec.png)
-        nodes = np.array([
-            [0.0, 1.0], # 0: บนซ้าย (โหนด 6)
-            [0.0, 0.0], # 1: ล่างซ้าย (โหนด 5)
-            [1.0, 0.0], # 2: ล่างกลาง (โหนด 7)
-            [1.0, 1.0], # 3: บนกลาง (โหนด 8)
-            [2.0, 1.0], # 4: บนขวา (โหนด 9) *** กระดกขึ้นมาด้านบน ***
-            [2.0, 0.2]  # 5: ปลายลูกศรที่รับโหลด (ห้อยลงมาจากโหนด 9)
-        ])
-        members = np.array([
-            [0, 3], # Sen 1 (คานบนซ้าย โหนด 6-8)
-            [2, 3], # Sen 2 (เสากลาง โหนด 7-8)
-            [1, 3], # Sen 3 (ทแยง โหนด 5-8)
-            [1, 2], # Sen 4 (คานล่างซ้าย โหนด 5-7)
-            [2, 4], # Sen 5 (ทแยง โหนด 7-9)
-            [3, 4], # Sen 6 (คานบนขวา โหนด 8-9) *** เปลี่ยนมาอยู่คานบน ***
-            [4, 5]  # Sen 7 (ลูกศรโหลด ห้อยจากโหนด 9)
-        ])
+        nodes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 1.0], [2.0, 0.2]])
+        members = np.array([[0, 3], [2, 3], [1, 3], [1, 2], [2, 4], [3, 4], [4, 5]])
 
-    # คำนวณขอบเขตของกราฟ
     x_min, x_max = nodes[:, 0].min(), nodes[:, 0].max()
     y_min, y_max = nodes[:, 1].min(), nodes[:, 1].max()
 
@@ -306,7 +271,6 @@ elif st.session_state.current_page == "แดชบอร์ด":
                 got_data = response.status_code == 200
                 if got_data: 
                     data = response.json()
-                    # 🚀 [แก้ไขที่นี่ 3] ดักจับบั๊กกรณี Firebase โล่ง
                     if data is None:
                         data = {}
 
@@ -318,7 +282,6 @@ elif st.session_state.current_page == "แดชบอร์ด":
                         val = val * 9.81
                     w.append(val)
 
-                # ชุดสีที่ตรงกับการ์ดฝั่งซ้าย (อิงตาม Index 0 ถึง 6)
                 colors = ["#4338CA", "#0D9488", "#F59E0B", "#E11D48", "#7C3AED", "#2563EB", "#059669"]
                 for i in range(7):
                     render_metric(metric_spots[i], f"Sensor {i+1}", w[i], colors[i])
@@ -331,21 +294,19 @@ elif st.session_state.current_page == "แดชบอร์ด":
                 ax.set_xlim(x_min - 0.4, x_max + 0.4)
                 ax.set_ylim(y_min - 0.4, y_max + 0.4)
 
-                # ------------------- วาดเส้น/ลูกศร พร้อมกล่อง -------------------
                 for idx_m, (start_node, end_node) in enumerate(members):
                     val = w[idx_m]
                     
                     if val > 0.05:
-                        edge_c = "#EF4444"   # แดง (Tension)
-                        arrow_c = "#EF4444"  # สีลูกศรสีแดง
+                        edge_c = "#EF4444"
+                        arrow_c = "#EF4444"
                     elif val < -0.05:
-                        edge_c = "#3B82F6"   # น้ำเงิน (Compression)
-                        arrow_c = "#3B82F6"  # สีลูกศรสีน้ำเงิน
+                        edge_c = "#3B82F6"
+                        arrow_c = "#3B82F6"
                     else:
-                        edge_c = "#94A3B8"   # เทา (เกือบศูนย์)
-                        arrow_c = "#CBD5E1"  # สีลูกศรสีเทา
+                        edge_c = "#94A3B8"
+                        arrow_c = "#CBD5E1"
 
-                    # วาดเส้น หรือ ลูกศร
                     if idx_m == 6:
                         ax.annotate("", xy=(nodes[end_node, 0], nodes[end_node, 1]), 
                                     xytext=(nodes[start_node, 0], nodes[start_node, 1]),
@@ -353,14 +314,12 @@ elif st.session_state.current_page == "แดชบอร์ด":
                     else:
                         ax.plot([nodes[start_node, 0], nodes[end_node, 0]], [nodes[start_node, 1], nodes[end_node, 1]], c=colors[idx_m], lw=6, zorder=1)
 
-                    # วาดกล่องตัวเลข
                     mid_x, mid_y = (nodes[start_node, 0] + nodes[end_node, 0]) / 2, (nodes[start_node, 1] + nodes[end_node, 1]) / 2
                     
                     ax.text(mid_x, mid_y, f"{val:.2f} {st.session_state.unit}", 
                             color="#1E293B", fontsize=11, fontweight='bold', ha='center', va='center', zorder=4,
                             bbox=dict(boxstyle='round,pad=0.3', facecolor='#FFFFFF', edgecolor=edge_c, linewidth=2.0))
 
-                # ซ่อนจุดปลายลูกศร
                 ax.scatter(nodes[:-1, 0], nodes[:-1, 1], s=120, c="#3B82F6", edgecolors="#FFFFFF", linewidths=2, zorder=3)
 
                 ax.set_aspect('equal')
@@ -377,3 +336,117 @@ elif st.session_state.current_page == "แดชบอร์ด":
             pass
 
         time.sleep(0.15)
+
+
+# ==========================================
+# 6. หน้าทฤษฎี (Theory) - เพิ่มใหม่ล่าสุด! 🚀
+# ==========================================
+elif st.session_state.current_page == "ทฤษฎี":
+    st.markdown("""
+    <div class="app-header">
+        <div>
+            <h1 style="margin:0; font-size: 28px; color:#1E293B;">📚 หน้าจำลองทฤษฎี (Theory)</h1>
+            <p style="margin: 4px 0 0 0; color:#64748B;">จำลองการรับแรงของชิ้นส่วนต่างๆ ตามหลักการวิเคราะห์โครงสร้าง</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # --- ปุ่มเลือกรูปแบบเหมือนหน้าแดชบอร์ด ---
+    t_col1, t_col2, t_col3 = st.columns(3)
+    with t_col1:
+        if st.button("📐 เลือกรูปแบบ A", use_container_width=True, type="primary" if st.session_state.selected_truss == "รูปแบบ A" else "secondary", key="btn_theo_a"):
+            st.session_state.selected_truss = "รูปแบบ A"; st.rerun()
+    with t_col2:
+        if st.button("📐 เลือกรูปแบบ B", use_container_width=True, type="primary" if st.session_state.selected_truss == "รูปแบบ B" else "secondary", key="btn_theo_b"):
+            st.session_state.selected_truss = "รูปแบบ B"; st.rerun()
+    with t_col3:
+        if st.button("📐 เลือกรูปแบบ C", use_container_width=True, type="primary" if st.session_state.selected_truss == "รูปแบบ C" else "secondary", key="btn_theo_c"):
+            st.session_state.selected_truss = "รูปแบบ C"; st.rerun()
+            
+    st.markdown("---")
+    
+    # --- แผงควบคุมเลื่อนน้ำหนัก ---
+    ctrl_col1, ctrl_col2 = st.columns([2, 1])
+    with ctrl_col1:
+        weight_input = st.slider("⚖️ เลือกระดับน้ำหนักโหลด (kg)", min_value=0.5, max_value=10.0, value=1.0, step=0.1)
+    with ctrl_col2:
+        unit_theo = st.radio("เลือกหน่วยวัดทฤษฎี:", ["kg", "N"], horizontal=True, key="unit_theo")
+        
+    multiplier = 9.81 if unit_theo == "N" else 1.0
+    
+    # --- ข้อมูลสัมประสิทธิ์ (Coefficient) ---
+    THEORY_COEFFS = {
+        "รูปแบบ A": [1.00, -1.00, 1.41, -2.00, 1.41, -1.00, 1.00],
+        "รูปแบบ B": [2.00, 0.00, -1.41, -1.00, 1.41, -1.00, 1.00],
+        "รูปแบบ C": [2.00, 1.00, -1.41, -1.00, -1.41, 1.00, 1.00]
+    }
+    
+    # คำนวณตามสูตร
+    coeffs = THEORY_COEFFS[st.session_state.selected_truss]
+    theory_w = [c * weight_input * multiplier for c in coeffs]
+    
+    # --- แบ่งหน้าจอแสดงผลตารางและกราฟ ---
+    left_col, right_col = st.columns([1.2, 2.2], gap="large")
+    
+    with left_col:
+        st.subheader(f"📝 ตารางผลลัพธ์ ({unit_theo})")
+        df = pd.DataFrame({
+            "เซนเซอร์": [f"Sensor {i+1}" for i in range(7)],
+            "ค่าสัมประสิทธิ์": coeffs,
+            f"แรงที่ได้ ({unit_theo})": [round(v, 2) for v in theory_w]
+        })
+        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.info("💡 **แรงดึง (Tension)** จะมีค่าเป็นบวก\n\n**แรงอัด (Compression)** จะมีค่าเป็นลบ")
+        
+    with right_col:
+        # ดึงโหนดเหมือนหน้าแดชบอร์ด
+        if st.session_state.selected_truss == "รูปแบบ A":
+            nodes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, -0.8]])
+            members = np.array([[0, 3], [2, 3], [0, 2], [1, 2], [3, 4], [2, 4], [4, 5]])
+        elif st.session_state.selected_truss == "รูปแบบ B": 
+            nodes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 0.0], [2.0, -0.8]])
+            members = np.array([[0, 3], [2, 3], [1, 3], [1, 2], [3, 4], [2, 4], [4, 5]])
+        else: 
+            nodes = np.array([[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 1.0], [2.0, 0.2]])
+            members = np.array([[0, 3], [2, 3], [1, 3], [1, 2], [2, 4], [3, 4], [4, 5]])
+
+        x_min, x_max = nodes[:, 0].min(), nodes[:, 0].max()
+        y_min, y_max = nodes[:, 1].min(), nodes[:, 1].max()
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
+        fig.patch.set_facecolor('#FFFFFF')
+        ax.set_facecolor('#FFFFFF')
+        ax.set_xlim(x_min - 0.4, x_max + 0.4)
+        ax.set_ylim(y_min - 0.4, y_max + 0.4)
+
+        colors = ["#4338CA", "#0D9488", "#F59E0B", "#E11D48", "#7C3AED", "#2563EB", "#059669"]
+
+        for idx_m, (start_node, end_node) in enumerate(members):
+            val = theory_w[idx_m]
+            
+            if val > 0.05:
+                edge_c, arrow_c = "#EF4444", "#EF4444"
+            elif val < -0.05:
+                edge_c, arrow_c = "#3B82F6", "#3B82F6"
+            else:
+                edge_c, arrow_c = "#94A3B8", "#CBD5E1"
+
+            if idx_m == 6:
+                ax.annotate("", xy=(nodes[end_node, 0], nodes[end_node, 1]), 
+                            xytext=(nodes[start_node, 0], nodes[start_node, 1]),
+                            arrowprops=dict(arrowstyle="-|>", lw=6, color=arrow_c, mutation_scale=25), zorder=1)
+            else:
+                ax.plot([nodes[start_node, 0], nodes[end_node, 0]], [nodes[start_node, 1], nodes[end_node, 1]], c=colors[idx_m], lw=6, zorder=1)
+
+            mid_x, mid_y = (nodes[start_node, 0] + nodes[end_node, 0]) / 2, (nodes[start_node, 1] + nodes[end_node, 1]) / 2
+            ax.text(mid_x, mid_y, f"{val:.2f} {unit_theo}", 
+                    color="#1E293B", fontsize=11, fontweight='bold', ha='center', va='center', zorder=4,
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='#FFFFFF', edgecolor=edge_c, linewidth=2.0))
+
+        ax.scatter(nodes[:-1, 0], nodes[:-1, 1], s=120, c="#3B82F6", edgecolors="#FFFFFF", linewidths=2, zorder=3)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        ax.text(x_min, y_min - 0.3, "■ แรงดึง (Tension)", color="#EF4444", fontsize=10, fontweight='bold')
+        ax.text(x_min + 1.1, y_min - 0.3, "■ แรงอัด (Compression)", color="#3B82F6", fontsize=10, fontweight='bold')
+
+        st.pyplot(fig, use_container_width=True)
