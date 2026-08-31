@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import os
-import pandas as pd  # <-- เพิ่มแพ็กเกจสำหรับตารางทฤษฎี
 
 # ==========================================
 # 0. ตั้งค่าฟอนต์ภาษาไทยให้ Matplotlib
@@ -28,25 +27,10 @@ for i in range(1, 8):
     if f'tare_w{i}' not in st.session_state: 
         st.session_state[f'tare_w{i}'] = 0.0
         
-if 'sim_t' not in st.session_state: st.session_state.sim_t = 0.0
 if 'selected_truss' not in st.session_state: st.session_state.selected_truss = "รูปแบบ A"
 if 'unit' not in st.session_state: st.session_state.unit = "kg"
 if 'current_page' not in st.session_state: st.session_state.current_page = "หน้าหลัก"
 if 'needs_flush' not in st.session_state: st.session_state.needs_flush = False
-
-def get_simulated_data():
-    st.session_state.sim_t += 0.15
-    t = st.session_state.sim_t
-    noise = lambda: np.random.uniform(-0.03, 0.03)
-    return {
-        "kg1": 0.97 + noise(),
-        "kg2": -1.84 + noise(),
-        "kg3": 1.30 + noise(),
-        "kg4": -1.03 + noise(),
-        "kg5": 1.42 + noise(),
-        "kg6": -0.92 + noise(),
-        "kg7": 1.00 + noise()
-    }
 
 # ==========================================
 # 2. ธีมและสไตล์ (คลีนๆ)
@@ -109,7 +93,6 @@ with st.sidebar:
         st.session_state.needs_flush = True
         st.rerun()
 
-    # 🚀 เพิ่มปุ่มทฤษฎีตรงนี้
     if st.button("📚 ทฤษฎี (Theory)", use_container_width=True, key="nav_theo"):
         st.session_state.current_page = "ทฤษฎี"
         st.session_state.needs_flush = True
@@ -202,22 +185,18 @@ elif st.session_state.current_page == "แดชบอร์ด":
 
     # ---------------- ฝั่งซ้าย: แผงควบคุม & การ์ด ----------------
     with left_col:
-        demo_mode = st.checkbox("🧪 โหมดจำลอง", value=True, key="demo_mode_chk")
         st.write("") 
 
         ctrl1, ctrl2 = st.columns([1, 1])
         with ctrl1:
             if st.button("⚖️ Tare (เซ็ตศูนย์)", use_container_width=True, type="primary"):
                 try:
-                    if demo_mode:
-                        d = get_simulated_data()
-                    else:
-                        resp = requests.get(DATA_URL, timeout=3.0) 
-                        d = resp.json() if resp.status_code == 200 else {}
+                    resp = requests.get(DATA_URL, timeout=3.0) 
+                    d = resp.json() if resp.status_code == 200 else {}
+                    
+                    if d is None:
+                        d = {}
                         
-                        if d is None:
-                            d = {}
-                            
                     if d:
                         for i in range(1, 8):
                             st.session_state[f'tare_w{i}'] = d.get(f"kg{i}", 0.0)
@@ -260,19 +239,15 @@ elif st.session_state.current_page == "แดชบอร์ด":
     x_min, x_max = nodes[:, 0].min(), nodes[:, 0].max()
     y_min, y_max = nodes[:, 1].min(), nodes[:, 1].max()
 
-    # ลูปอัปเดต (ไม่กระพริบ)
+    # ลูปอัปเดตกราฟ
     while True:
         try:
-            if demo_mode:
-                data = get_simulated_data()
-                got_data = True
-            else:
-                response = requests.get(DATA_URL, timeout=1.0)
-                got_data = response.status_code == 200
-                if got_data: 
-                    data = response.json()
-                    if data is None:
-                        data = {}
+            response = requests.get(DATA_URL, timeout=1.0)
+            got_data = response.status_code == 200
+            if got_data: 
+                data = response.json()
+                if data is None:
+                    data = {}
 
             if got_data:
                 w = []
@@ -339,7 +314,7 @@ elif st.session_state.current_page == "แดชบอร์ด":
 
 
 # ==========================================
-# 6. หน้าทฤษฎี (Theory) - เพิ่มใหม่ล่าสุด! 🚀
+# 6. หน้าทฤษฎี (Theory) 
 # ==========================================
 elif st.session_state.current_page == "ทฤษฎี":
     st.markdown("""
@@ -389,13 +364,7 @@ elif st.session_state.current_page == "ทฤษฎี":
     left_col, right_col = st.columns([1.2, 2.2], gap="large")
     
     with left_col:
-        st.subheader(f"📝 ตารางผลลัพธ์ ({unit_theo})")
-        df = pd.DataFrame({
-            "เซนเซอร์": [f"Sensor {i+1}" for i in range(7)],
-            "ค่าสัมประสิทธิ์": coeffs,
-            f"แรงที่ได้ ({unit_theo})": [round(v, 2) for v in theory_w]
-        })
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        # เหลือไว้แค่คำอธิบายทิศทางของแรง (เอาตารางออกแล้ว)
         st.info("💡 **แรงดึง (Tension)** จะมีค่าเป็นบวก\n\n**แรงอัด (Compression)** จะมีค่าเป็นลบ")
         
     with right_col:
